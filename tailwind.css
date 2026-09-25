@@ -1,0 +1,107 @@
+@import url("https://fonts.googleapis.com/css2?family=Allura&family=Great+Vibes&family=Inter:wght@200;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Amiri:wght@400;700&family=Aref+Ruqaa:wght@400;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+
+    --card: transparent;
+    --card-foreground: 222.2 47.4% 11.2%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --ring: 215 20.2% 65.1%;
+  }
+}
+
+/* Arabic typography */
+/* (names use Aref Ruqaa calligraphy in Arabic) */
+@font-face {
+  font-family: "XB Shafigh";
+  src: url("./src/fonts/XBShafigh.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "XB Shafigh";
+  src: url("./src/fonts/XBShafigh-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+html[lang="ar"] body,
+html[lang="ar"] body * {
+  font-family: "XB Shafigh", "Amiri", "Times New Roman", serif;
+  letter-spacing: 0 !important;
+}
+
+/* Hide the native play overlay iOS shows when autoplay is blocked (e.g. low power mode) */
+video::-webkit-media-controls,
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-overlay-play-button,
+video::-webkit-media-controls-panel {
+  display: none !important;
+  -webkit-appearance: none;
+}
+
+/* Soft bounce for the scroll hint in the hero (like the reference site) */
+@keyframes soft-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+.animate-soft-bounce {
+  animation: soft-bounce 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-soft-bounce {
+    animation: none;
+  }
+}
+
+html[lang="ar"] .font-names,
+html[lang="ar"] .font-names * {
+  font-family: "Aref Ruqaa", "XB Shafigh", serif;
+}
+
+/* Soft glowing monogram */
+@keyframes soft-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 250, 225, 0.35)); }
+  50% { filter: drop-shadow(0 0 16px rgba(255, 250, 225, 0.7)); }
+}
+
+.animate-soft-glow {
+  animation: soft-glow 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-soft-glow {
+    animation: none;
+    filter: drop-shadow(0 0 10px rgba(255, 250, 225, 0.5));
+  }
+}
