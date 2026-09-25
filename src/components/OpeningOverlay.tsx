@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/i18n";
 import { INTRO_FINISHED_EVENT, INTRO_OPENED_EVENT } from "@/sections/HeroSection/components/HeroVideo";
+import introVideo from "@/assets/intro-video.mp4";
 
 export const OpeningOverlay = ({ onStart }: { onStart?: () => void }) => {
   const { t } = useLanguage();
@@ -40,7 +41,7 @@ export const OpeningOverlay = ({ onStart }: { onStart?: () => void }) => {
       <video
         ref={videoRef}
         onEnded={close}
-        src="https://lafincapremium.thedigitalyes.com/assets/intro-video-BAfR3p8k.mov"
+        src={introVideo}
         poster="https://c.animaapp.com/sYECYRLIChBJxO67a5WNpw/assets/intro-poster-Bahq9OmS.png"
         playsInline
         preload="auto"
