@@ -59,13 +59,21 @@ html[lang="ar"] body * {
   letter-spacing: 0 !important;
 }
 
-/* Hide the native play overlay iOS shows when autoplay is blocked (e.g. low power mode) */
+/* Hide every browser's native "tap to play" button/UI on any unplayed video
+   (Safari and Chrome both show one by default on a controls-less <video>,
+   whether or not autoplay was attempted). We handle play/pause ourselves. */
 video::-webkit-media-controls,
+video::-webkit-media-controls-enclosure,
 video::-webkit-media-controls-start-playback-button,
 video::-webkit-media-controls-overlay-play-button,
-video::-webkit-media-controls-panel {
+video::-webkit-media-controls-play-button,
+video::-webkit-media-controls-panel,
+video::-internal-media-controls-overlay-cast-button {
   display: none !important;
-  -webkit-appearance: none;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  -webkit-appearance: none !important;
 }
 
 /* Soft bounce for the scroll hint in the hero (like the reference site) */
