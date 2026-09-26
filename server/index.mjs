@@ -104,33 +104,71 @@ const handleRsvp = async (req, res) => {
 };
 
 const mime = {
-  ".html": "text/html",
-  ".js": "text/javascript",
-  ".css": "text/css",
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json",
+  ".txt": "text/plain; charset=utf-8",
+  ".xml": "application/xml",
   ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
   ".webp": "image/webp",
   ".gif": "image/gif",
   ".svg": "image/svg+xml",
-  ".ttf": "font/ttf",
+  ".ico": "image/x-icon",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
   ".mp3": "audio/mpeg",
-  ".json": "application/json",
+  ".ttf": "font/ttf",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
 };
 
 // Serves the built site (npm run build) so one process handles everything in production.
+// - correct Content-Type for every file type (link-preview crawlers check it)
+// - Range requests: iPhone Safari refuses to play a video unless the server
+//   can send it in pieces (HTTP 206)
+// - files in /assets/ have hashed names, so they can be cached for a year
 const serveStatic = (req, res) => {
   const urlPath = decodeURIComponent(new URL(req.url, "http://x").pathname);
   let file = path.join(distDir, urlPath);
   if (!file.startsWith(distDir)) return sendJson(res, 403, { error: "Forbidden" });
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(distDir, "index.html");
   if (!fs.existsSync(file)) return sendJson(res, 404, { error: "Run npm run build first" });
-  res.writeHead(200, { "Content-Type": mime[path.extname(file)] || "application/octet-stream" });
+
+  const { size } = fs.statSync(file);
+  const headers = {
+    "Content-Type": mime[path.extname(file).toLowerCase()] || "application/octet-stream",
+    "Accept-Ranges": "bytes",
+    "Cache-Control": file.includes(`${path.sep}assets${path.sep}`)
+      ? "public, max-age=31536000, immutable"
+      : "no-cache",
+  };
+
+  const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || "");
+  if (range) {
+    let start = range[1] === "" ? size - Number(range[2]) : Number(range[1]);
+    let end = range[1] === "" || range[2] === "" ? size - 1 : Math.min(Number(range[2]), size - 1);
+    start = Math.max(start, 0);
+    if (start > end || start >= size) {
+      res.writeHead(416, { "Content-Range": `bytes */${size}` });
+      return res.end();
+    }
+    res.writeHead(206, { ...headers, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": end - start + 1 });
+    if (req.method === "HEAD") return res.end();
+    return fs.createReadStream(file, { start, end }).pipe(res);
+  }
+
+  res.writeHead(200, { ...headers, "Content-Length": size });
+  if (req.method === "HEAD") return res.end();
   fs.createReadStream(file).pipe(res);
 };
 
 http
   .createServer((req, res) => {
     if (req.method === "POST" && req.url === "/api/rsvp") return handleRsvp(req, res);
-    if (req.method === "GET") return serveStatic(req, res);
+    if (req.method === "GET" || req.method === "HEAD") return serveStatic(req, res);
     sendJson(res, 405, { error: "Method not allowed" });
   })
   .listen(port, () => {
