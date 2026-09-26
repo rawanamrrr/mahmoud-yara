@@ -15,8 +15,8 @@ export const MainContent = () => {
       <DayDetailsSection />
       <SectionDivider />
       <ScheduleSection />
-      <DressCodeSection />
       <RsvpSection />
+      <DressCodeSection />
       <FooterSection />
     </main>
   );
