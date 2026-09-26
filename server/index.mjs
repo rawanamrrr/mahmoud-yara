@@ -4,42 +4,20 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import dns from "node:dns";
 import { fileURLToPath } from "node:url";
-import nodemailer from "nodemailer";
-
-// Some networks/routers advertise IPv6 but don't actually route it anywhere,
-// which makes Node try smtp.gmail.com's IPv6 address first and get an
-// immediate ECONNREFUSED before ever trying IPv4. Prefer IPv4 to avoid that.
-dns.setDefaultResultOrder("ipv4first");
+import {
+  transporter,
+  SMTP_USER,
+  CONTACT_EMAIL,
+  NEXT_PUBLIC_SITE_URL,
+  missingEnv,
+  explainMailError,
+} from "./mailer.mjs";
+import { buildRsvpEmail } from "./email-template.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = path.join(root, "dist");
 const port = Number(process.env.PORT || 3001);
-
-const { SMTP_USER, SMTP_PASS, CONTACT_EMAIL, NEXT_PUBLIC_SITE_URL } = process.env;
-
-if (!SMTP_USER || !SMTP_PASS || !CONTACT_EMAIL) {
-  console.warn("Missing SMTP_USER, SMTP_PASS or CONTACT_EMAIL in .env.local - emails will fail.");
-}
-
-// SMTP_INSECURE=true is a LOCAL-ONLY escape hatch for the classic Windows
-// "unable to verify the first certificate" error, usually caused by antivirus
-// or a corporate/school network doing TLS inspection on port 465. It skips
-// certificate verification - never set this in production.
-const insecure = process.env.SMTP_INSECURE === "true";
-if (insecure) {
-  console.warn("SMTP_INSECURE=true - certificate verification is DISABLED. For local debugging only.");
-}
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: { user: SMTP_USER, pass: SMTP_PASS },
-  ...(insecure ? { tls: { rejectUnauthorized: false } } : {}),
-});
-
-const escapeHtml = (value) =>
-  String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 const clean = (value, max) => String(value ?? "").trim().slice(0, max);
 
@@ -98,25 +76,22 @@ const handleRsvp = async (req, res) => {
     drawing = Buffer.from(match[1], "base64");
   }
 
-  const rows = [
-    ["Name", name],
-    ["Attending", attending],
-    ["Guests", attending === "Yes" ? String(guests) : "-"],
-    ["Message", message || "-"],
-    ["Site", NEXT_PUBLIC_SITE_URL || "-"],
-  ];
+  const { subject, text, html } = buildRsvpEmail({
+    name,
+    attending,
+    guests,
+    message,
+    hasDrawing: Boolean(drawing),
+    siteUrl: NEXT_PUBLIC_SITE_URL,
+  });
 
   try {
     await transporter.sendMail({
       from: `"Wedding RSVP" <${SMTP_USER}>`,
       to: CONTACT_EMAIL,
-      subject: `RSVP: ${name} - ${attending === "Yes" ? "attending" : "not attending"}`,
-      text: rows.map(([k, v]) => `${k}: ${v}`).join("\n"),
-      html:
-        "<table cellpadding='6' style='font-family:sans-serif;font-size:14px'>" +
-        rows.map(([k, v]) => `<tr><td><b>${k}</b></td><td>${escapeHtml(v)}</td></tr>`).join("") +
-        "</table>" +
-        (drawing ? "<p><b>Handwritten message:</b></p><img src='cid:drawing' style='max-width:100%;border:1px solid #ccc'>" : ""),
+      subject,
+      text,
+      html,
       attachments: drawing
         ? [{ filename: "message.png", content: drawing, cid: "drawing", contentType: "image/png" }]
         : [],
@@ -158,4 +133,19 @@ http
     if (req.method === "GET") return serveStatic(req, res);
     sendJson(res, 405, { error: "Method not allowed" });
   })
-  .listen(port, () => console.log(`RSVP server on http://localhost:${port}`));
+  .listen(port, () => {
+    console.log(`RSVP server on http://localhost:${port}`);
+    if (missingEnv.length) {
+      console.error(`EMAIL NOT CONFIGURED - missing in .env.local: ${missingEnv.join(", ")}`);
+      return;
+    }
+    // Check the Gmail login right away so a broken setup shows up now,
+    // not when the first guest submits.
+    transporter
+      .verify()
+      .then(() => console.log(`Email OK - RSVPs will be sent from ${SMTP_USER} to ${CONTACT_EMAIL}`))
+      .catch((error) => {
+        console.error(`EMAIL NOT WORKING: ${error.message}`);
+        console.error(`=> ${explainMailError(error)}`);
+      });
+  });
